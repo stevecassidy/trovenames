@@ -79,10 +79,10 @@ def source(sourceid):
 	
 	return {'title': title, 'id': sourceid, 'articles': articles}
 	
+
+def get_name(nameid):
+	"""Get the name of this nameid"""
 	
-@application.get('/name/<nameid>')
-def name(nameid):
-	"""Return information about this name"""
 	
 	query = """
 	PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
@@ -101,6 +101,16 @@ def name(nameid):
 	else:
 		# 404
 		abort(404, 'Unknown name id: "%s"' % nameid)
+		
+		
+	return name
+
+
+@application.get('/name/<nameid>')
+def name(nameid):
+	"""Return information about this name"""
+	
+	name = get_name(nameid)
 	
 	query = """
 	PREFIX schema: <http://schema.org/>
@@ -118,7 +128,58 @@ def name(nameid):
 	else:
 		articles = []	
 	
-	return {'id': nameid, 'name': name, 'mentioned_in': articles }
+	alink = "http://trove.stevecassidy.net/associates/%s" % (nameid,)
+	namelink = "http://trove.stevecassidy.net/name/%s" % (nameid,)
+	
+	return {'id': namelink, 'name': name, 'mentioned_in': articles, 'associates': alink }
+
+
+@application.get('/associates/<nameid>')
+def associates(nameid):
+	"""Return a list of the 'associates' of this nameid, associates
+	are mentioned in the same article as this person"""
+
+
+	if 'limit' in request.GET:
+		limitterm = "LIMIT %d" % int(request.GET['limit'])
+	else:
+		limitterm = ""
+
+	name = get_name(nameid)
+
+	query = """
+PREFIX schema: <http://schema.org/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+SELECT ?otherperson ?name (count(?name) as ?count) WHERE {
+  	?article schema:mentions <http://trove.stevecassidy.net/name/%s> .
+    ?article schema:mentions ?otherperson .
+    ?article dcterms:title ?articletitle .
+    ?otherperson rdf:label ?name .
+  filter (<http://trove.stevecassidy.net/name/%s> != ?otherperson)
+} group by ?name
+order by desc(?count)
+	""" % (nameid, nameid)
+	
+	query = query + limitterm
+
+	SPARQL.setQuery(query)
+	SPARQL.setReturnFormat(JSON)
+	results = SPARQL.query().convert()
+	
+	assoc = []
+ 	for binding in results["results"]["bindings"]:
+		d = {'name': binding["name"]["value"],
+			 'url': binding["otherperson"]["value"],
+		 	 'count': binding["count"]["value"]}
+		assoc.append(d)
+		
+
+	namelink = "http://trove.stevecassidy.net/name/%s" % (nameid,)
+	
+	return {'id': namelink, 'name': name, 'associates': assoc}
+
+	
 	
 	
 if __name__=='__main__':

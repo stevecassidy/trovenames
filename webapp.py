@@ -9,7 +9,7 @@ import rdflib
 from SPARQLWrapper import SPARQLWrapper, JSON
 
 STATIC_PATH = 'static'
-SPARQL_ENDPOINT = 'http://144.6.227.157/sparql/'
+SPARQL_ENDPOINT = 'http://trove.stevecassidy.net/sparql/'
 
 SPARQL = SPARQLWrapper(SPARQL_ENDPOINT)
 

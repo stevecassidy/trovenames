@@ -28,11 +28,13 @@ def ner_records(fd):
     text = ""
     for line in fd.readlines():
         line = line.strip()
-        if line == "}{" or line == "}":
+        if line == "},{" or line == "}":
             text += "}"
             d = json.loads(text)
             text = "{"
             yield d
+        elif line == "[" or line == "]":
+            pass
         elif line == "{":
             text = line
         else:

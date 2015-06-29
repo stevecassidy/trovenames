@@ -5,6 +5,8 @@ import gzip
 import rdflib
 import hashlib
 
+from rdflib.namespace import XSD
+
 SO = rdflib.Namespace('http://schema.org/')
 
 SOURCE = rdflib.Namespace('http://trove.stevecassidy.net/source/')
@@ -58,11 +60,21 @@ def genrdf(record, graph):
     graph.add((work, DC.title, rdflib.Literal(record['article_title'])))
     graph.add((work, DC.source, source))
     
+    # TODO: add article year
+    year = int(record['article_date'][0:4])
+    graph.add((work, PROP.year, rdflib.Literal(year)))
+    
     graph.add((name, RDF.type, PROP.Name))
     graph.add((name, RDF.label, rdflib.Literal(record['name'])))
+    for word in record['name'].split():
+        graph.add((name, PROP.word, rdflib.Literal(word.lower())))
+    lastname = record['name'].split()[-1]
+    graph.add((name, PROP.lastname, rdflib.Literal(lastname.lower())))
     
     # record the mention
     graph.add((work, SO.mentions, name))
+    graph.add((work, PROP.context, rdflib.Literal(record['name_context'])))
+
 
     graph.add((source, RDF.type, DC.Collection))
     graph.add((source, DC.hasPart, work))
@@ -72,12 +84,38 @@ def genrdf(record, graph):
 
 if __name__=='__main__':
     
-    import sys
-    input = sys.argv[1]
-    graph = rdflib.Graph()
-    with gzip.open(input) as fd:
-        for d in ner_records(fd):
-            genrdf(d, graph)
+    import sys, os
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='convert NER output to RDF')
+    parser.add_argument('--outdir', default='results', help='directory for output files')
+    parser.add_argument('files', metavar='files', nargs='+', help='input data files')
+    args = parser.parse_args()
+    
+    if not os.path.exists(args.outdir):
+        os.makedirs(args.outdir)
+
+    for datafile in args.files:
+        graph = rdflib.Graph()
+        with gzip.open(datafile) as fd:
+            for d in ner_records(fd):
+                genrdf(d, graph)
             
-    print graph.serialize(format='turtle')
+            
+        graph.bind('dcterms', DC)
+        graph.bind('schema', SO)
+        graph.bind('cc', CC)
+        graph.bind('trovenamesq', PROP)
+        #graph.bind('source', SOURCE)
+            
+        turtle = graph.serialize(format='turtle')
+        
+        basename, ext = os.path.splitext(os.path.splitext(datafile)[0])
+        
+        print os.path.join(args.outdir, basename + ".ttl")
+        with open(os.path.join(args.outdir, basename + ".ttl"), 'w') as out:
+            out.write(turtle)
+        
+        
+        
     

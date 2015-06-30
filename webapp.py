@@ -152,7 +152,7 @@ def name(nameid):
 	  ?article schema:mentions <http://trove.stevecassidy.net/name/%s> .
 	  ?article dcterms:title ?title
 	}
-	limit 50
+	limit 100
 	""" % (nameid,)
 	
 	SPARQL.setQuery(query)
@@ -169,7 +169,6 @@ def name(nameid):
 	namelink = "/name/%s" % (nameid,)
 		
 	info = {'namelink': namelink, 'name': name, 'mentioned_in': articles, 'associates': alink }
-
 	
 	if 'application/json' in request.headers['accept']:
 		return info
@@ -186,7 +185,7 @@ def associates(nameid):
 	if 'limit' in request.GET:
 		limitterm = "LIMIT %d" % int(request.GET['limit'])
 	else:
-		limitterm = ""
+		limitterm = "LIMIT 50"
 
 	name = get_name(nameid)
 
@@ -202,7 +201,6 @@ SELECT ?otherperson ?name (count(?name) as ?count) WHERE {
   filter (<http://trove.stevecassidy.net/name/%s> != ?otherperson)
 } group by ?name
 order by desc(?count)
-limit 50
 	""" % (nameid, nameid)
 	
 	query = query + limitterm

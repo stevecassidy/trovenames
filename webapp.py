@@ -39,6 +39,40 @@ def query():
 	
 	return template('sparql.tpl', endpoint=SPARQL_ENDPOINT)
 
+@application.get('/name')
+def searchnames():
+	"""Present a user form to query names"""
+
+	if 'name' in request.GET:
+		nameq = request.GET['name']
+		
+		query = """
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX proc: <http://trove.stevecassidy.net/schema/>
+
+SELECT distinct ?nameid ?name WHERE {
+  ?nameid proc:word "%s" .
+  ?nameid rdf:label ?name .
+}
+		""" % (nameq,)
+		
+		print "QUERY: ", query
+		
+		SPARQL.setQuery(query)
+		SPARQL.setReturnFormat(JSON)
+		results = SPARQL.query().convert()
+
+		links = []
+		for result in results["results"]["bindings"]:
+			links.append({'link': result["nameid"]["value"], 'name': result["name"]["value"]})
+		
+		return template('namesearch.tpl', links=links)
+	
+	else:
+		return template('namesearch.tpl', links=[])
+		
+		
+
 @application.get('/source/<sourceid>')
 def source(sourceid):
 	"""Return information about this source"""
@@ -114,24 +148,35 @@ def name(nameid):
 	
 	query = """
 	PREFIX schema: <http://schema.org/>
-	SELECT ?article WHERE {
+	prefix dcterms: <http://purl.org/dc/terms/>
+	
+	SELECT ?article ?title WHERE {
 	  ?article schema:mentions <http://trove.stevecassidy.net/name/%s> .
+	  ?article dcterms:title ?title
 	}
+	limit 50
 	""" % (nameid,)
 	
 	SPARQL.setQuery(query)
 	SPARQL.setReturnFormat(JSON)
 	results = SPARQL.query().convert()
 	
- 	if len(results["results"]["bindings"]) > 0:
-		articles = [r["article"]["value"] for r in results["results"]["bindings"]]
+	articles = []	
+	for r in results["results"]["bindings"]:
+		print "ROW", r
+		articles.append({'title': r["title"]["value"], 'link': r["article"]["value"]})
+		
+	
+	alink = "/associates/%s" % (nameid,)
+	namelink = "/name/%s" % (nameid,)
+		
+	info = {'namelink': namelink, 'name': name, 'mentioned_in': articles, 'associates': alink }
+
+	
+	if 'application/json' in request.headers['accept']:
+		return info
 	else:
-		articles = []	
-	
-	alink = "http://trove.stevecassidy.net/associates/%s" % (nameid,)
-	namelink = "http://trove.stevecassidy.net/name/%s" % (nameid,)
-	
-	return {'id': namelink, 'name': name, 'mentioned_in': articles, 'associates': alink }
+		return template('name.tpl', **info)
 
 
 @application.get('/associates/<nameid>')
@@ -159,6 +204,7 @@ SELECT ?otherperson ?name (count(?name) as ?count) WHERE {
   filter (<http://trove.stevecassidy.net/name/%s> != ?otherperson)
 } group by ?name
 order by desc(?count)
+limit 50
 	""" % (nameid, nameid)
 	
 	query = query + limitterm
@@ -177,9 +223,12 @@ order by desc(?count)
 
 	namelink = "http://trove.stevecassidy.net/name/%s" % (nameid,)
 	
-	return {'id': namelink, 'name': name, 'associates': assoc}
+	info = {'namelink': namelink, 'name': name, 'associates': assoc}
 
-	
+	if 'application/json' in request.headers['accept']:
+		return info
+	else:
+		return template('associates.tpl', **info)	
 	
 	
 if __name__=='__main__':

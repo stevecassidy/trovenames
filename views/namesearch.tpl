@@ -2,11 +2,12 @@
 
 <div class="container">
       
-      <form method=GET>
-             <input name='name'>
-             <input type='submit'> 
-      </form>
-                
+      <p>
+   <form method=GET action='/name'>
+          <input name='name' size=30 placeholder="search by first or last name">
+          <input type='submit'> 
+   </form>
+         </p>       
         
         <ul>
         % for link in links:

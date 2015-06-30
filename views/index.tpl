@@ -13,7 +13,18 @@
         allow you to find out things about people and documents.</p>
 
    <p>This project is a collaboration between <a href="http://huni.net.au/">HuNI</a>, <a href="http://alveo.edu.au/">Alveo</a> and the National Library of Australia's <a href="http://trove.nla.gov.au/">Trove</a> archive. It was funded by  <a href="http://www.nectar.org.au">NeCTAR</a>.</p>
+   
+   <p>
+   <form method=GET action='/name'>
+          <input name='name' size=30 placeholder="search by first or last name">
+          <input type='submit'> 
+   </form>
+   </p>
       </div>
+      
+      
+
+      
 </div> <!-- container-fluid -->
 
 

@@ -54,10 +54,8 @@ SELECT distinct ?nameid ?name WHERE {
   ?nameid proc:word "%s" .
   ?nameid rdf:label ?name .
 }
-		""" % (nameq,)
-		
-		print "QUERY: ", query
-		
+		""" % (nameq.lower(),)
+				
 		SPARQL.setQuery(query)
 		SPARQL.setReturnFormat(JSON)
 		results = SPARQL.query().convert()

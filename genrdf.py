@@ -4,6 +4,7 @@ import json
 import gzip
 import rdflib
 import hashlib
+import string 
 
 from rdflib.namespace import XSD
 
@@ -14,6 +15,7 @@ NAME = rdflib.Namespace('http://trove.stevecassidy.net/name/')
 PROP = rdflib.Namespace('http://trove.stevecassidy.net/schema/')
 
 
+FOAF = rdflib.Namespace('http://xmlns.com/foaf/0.1/')
 WORK = rdflib.Namespace('http://trove.nla.gov.au/ndp/del/article/')
 RDF = rdflib.Namespace(u"http://www.w3.org/1999/02/22-rdf-syntax-ns#")
 RDFS = rdflib.Namespace(u"http://www.w3.org/2000/01/rdf-schema#")
@@ -49,12 +51,18 @@ def genID(prefix, name):
     
     return prefix[h]
     
+def normalise_name(name):
+    """Return a normalised version of this name"""
+    
+    return string.capwords(name)
+    
+
 
 def genrdf(record, graph):
     """Generate RDF for a single record"""
     
     work = WORK[record['article_id']]
-    name = genID(NAME, record['name'])
+    name = genID(NAME, normalise_name(record['name']))
     source = genID(SOURCE, record['article_source'])
 
     graph.add((work, RDF.type, CC.Work))
@@ -67,11 +75,14 @@ def genrdf(record, graph):
     graph.add((work, PROP.year, rdflib.Literal(year)))
     
     graph.add((name, RDF.type, PROP.Name))
-    graph.add((name, RDF.label, rdflib.Literal(record['name'])))
+    # add the name and normalised name as FOAF.name properties
+    graph.add((name, FOAF.name, rdflib.Literal(record['name'])))
+    graph.add((name, FOAF.name, rdflib.Literal(normalise_name(record['name']))))
+    # add the individual words in the name to help query
     for word in record['name'].split():
         graph.add((name, PROP.word, rdflib.Literal(word.lower())))
     lastname = record['name'].split()[-1]
-    graph.add((name, PROP.lastname, rdflib.Literal(lastname.lower())))
+    graph.add((name, FOAF.family_name, rdflib.Literal(lastname.lower())))
     
     # record the mention
     graph.add((work, SO.mentions, name))
@@ -107,8 +118,8 @@ if __name__=='__main__':
         graph.bind('dcterms', DC)
         graph.bind('schema', SO)
         graph.bind('cc', CC)
-        graph.bind('trovenamesq', PROP)
-        #graph.bind('source', SOURCE)
+        graph.bind('trovenames', PROP)
+        graph.bind('foaf', FOAF)
             
         turtle = graph.serialize(format='turtle')
         

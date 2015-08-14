@@ -1,3 +1,6 @@
 SPARQLWrapper==1.6.4
 bottle==0.12.8
 rdflib==4.1.2
+python-keystoneclient==1.6.0
+python-swiftclient==2.5.0
+redis==2.10.3

@@ -49,10 +49,11 @@ def searchnames():
 		query = """
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX proc: <http://trove.stevecassidy.net/schema/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
 SELECT distinct ?nameid ?name WHERE {
   ?nameid proc:word "%s" .
-  ?nameid rdf:label ?name .
+  ?nameid foaf:name ?name .
 }
 		""" % (nameq.lower(),)
 				
@@ -85,8 +86,8 @@ def source(sourceid):
 	SPARQL.setQuery(query)
 	SPARQL.setReturnFormat(JSON)
 	results = SPARQL.query().convert()
- 
- 	if len(results["results"]["bindings"]) > 0:
+
+	if len(results["results"]["bindings"]) > 0:
 		result = results["results"]["bindings"][0]
 		title = result["title"]["value"]
 	else:
@@ -104,7 +105,7 @@ def source(sourceid):
 	SPARQL.setReturnFormat(JSON)
 	results = SPARQL.query().convert()
 	
- 	if len(results["results"]["bindings"]) > 0:
+	if len(results["results"]["bindings"]) > 0:
 		articles = [r["article"]["value"] for r in results["results"]["bindings"]]
 	else:
 		articles = []
@@ -118,16 +119,18 @@ def get_name(nameid):
 	
 	query = """
 	PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+	PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+	
 	SELECT ?name WHERE { 
-	  <http://trove.stevecassidy.net/name/%s> rdf:label ?name .
+	  <http://trove.stevecassidy.net/name/%s> foaf:name ?name .
 	}
 	""" % (nameid,)
-	
+		
 	SPARQL.setQuery(query)
 	SPARQL.setReturnFormat(JSON)
 	results = SPARQL.query().convert()
  
- 	if len(results["results"]["bindings"]) > 0:
+	if len(results["results"]["bindings"]) > 0:
 		result = results["results"]["bindings"][0]
 		name = result["name"]["value"]
 	else:
@@ -161,7 +164,7 @@ def name(nameid):
 	
 	articles = []	
 	for r in results["results"]["bindings"]:
-		print "ROW", r
+		#print "ROW", r
 		articles.append({'title': r["title"]["value"], 'link': r["article"]["value"]})
 		
 	
@@ -193,11 +196,12 @@ def associates(nameid):
 PREFIX schema: <http://schema.org/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 SELECT ?otherperson ?name (count(?name) as ?count) WHERE {
   	?article schema:mentions <http://trove.stevecassidy.net/name/%s> .
     ?article schema:mentions ?otherperson .
     ?article dcterms:title ?articletitle .
-    ?otherperson rdf:label ?name .
+    ?otherperson foaf:name ?name .
   filter (<http://trove.stevecassidy.net/name/%s> != ?otherperson)
 } group by ?name
 order by desc(?count)
@@ -210,7 +214,7 @@ order by desc(?count)
 	results = SPARQL.query().convert()
 	
 	assoc = []
- 	for binding in results["results"]["bindings"]:
+	for binding in results["results"]["bindings"]:
 		d = {'name': binding["name"]["value"],
 			 'url': binding["otherperson"]["value"],
 		 	 'count': binding["count"]["value"]}

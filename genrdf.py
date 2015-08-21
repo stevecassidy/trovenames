@@ -13,6 +13,7 @@ SO = rdflib.Namespace('http://schema.org/')
 SOURCE = rdflib.Namespace('http://trove.stevecassidy.net/source/')
 NAME = rdflib.Namespace('http://trove.stevecassidy.net/name/')
 PROP = rdflib.Namespace('http://trove.stevecassidy.net/schema/')
+FULLTEXT = rdflib.Namespace('http://trove.stevecassidy.net/document/')
 
 
 FOAF = rdflib.Namespace('http://xmlns.com/foaf/0.1/')
@@ -29,7 +30,7 @@ def ner_records(fd):
     
     text = ""
     for line in fd.readlines():
-        line = line.strip()
+        line = line.strip().decode('utf-8')
         if line == "},{" or line == "}":
             text += "}"
             d = json.loads(text)
@@ -46,7 +47,7 @@ def genID(prefix, name):
     """Return a URI for this name"""
     
     m = hashlib.md5()
-    m.update(name)
+    m.update(name.encode())
     h = m.hexdigest()
     
     return prefix[h]
@@ -69,14 +70,15 @@ def genrdf(record, graph):
     graph.add((work, DC.created, rdflib.Literal(record['article_date'])))
     graph.add((work, DC.title, rdflib.Literal(record['article_title'])))
     graph.add((work, DC.source, source))
+    graph.add((work, DC.identifier, rdflib.Literal(record['article_id'])))
+    graph.add((work, PROP.fulltext, FULLTEXT[record['article_id']+".txt"]))    
     
     # TODO: add article year
     year = int(record['article_date'][0:4])
     graph.add((work, PROP.year, rdflib.Literal(year)))
     
     graph.add((name, RDF.type, PROP.Name))
-    # add the name and normalised name as FOAF.name properties
-    graph.add((name, FOAF.name, rdflib.Literal(record['name'])))
+    # add the normalised name as FOAF.name properties
     graph.add((name, FOAF.name, rdflib.Literal(normalise_name(record['name']))))
     # add the individual words in the name to help query
     for word in record['name'].split():
@@ -92,8 +94,53 @@ def genrdf(record, graph):
     graph.add((source, RDF.type, DC.Collection))
     graph.add((source, DC.hasPart, work))
     graph.add((source, DC.title, rdflib.Literal(record['article_source'])))
+
+
+def process_files(files, outdir, prefix="trovenames", threshold=1000000):
+    """Turn these files into RDF"""
     
+
+    graph = rdflib.Graph()
+    records = 0
+    outcount = 1
+    for datafile in files:
+        print(datafile)
+        with gzip.open(datafile) as fd:
+            for d in ner_records(fd):
+                genrdf(d, graph)
+                if records > threshold:
+                    output_graph(graph, prefix + "-" + str(outcount), outdir)
+                    records = 0
+                    outcount += 1
+                    # remove everything from the graph now we've written it out
+                    graph = rdflib.Graph()
+                else:
+                    records += 1
+                    
+        # finish off
+        output_graph(graph, prefix + "-" + str(outcount), outdir)
+        
+
+
+def output_graph(graph, basename, outdir):
+    """Write this graph out to the right place"""
     
+    graph.bind('dcterms', DC)
+    graph.bind('schema', SO)
+    graph.bind('cc', CC)
+    graph.bind('trovenames', PROP)
+    graph.bind('foaf', FOAF)
+        
+    turtle = graph.serialize(format='turtle')
+        
+    outfile = os.path.join(outdir, basename + ".ttl")
+    with open(outfile, 'w') as out:
+        out.write(turtle.decode('utf-8'))
+    
+    print("\t>> ", outfile)
+        
+    return outfile
+
 
 if __name__=='__main__':
     
@@ -108,27 +155,9 @@ if __name__=='__main__':
     if not os.path.exists(args.outdir):
         os.makedirs(args.outdir)
 
-    for datafile in args.files:
-        graph = rdflib.Graph()
-        with gzip.open(datafile) as fd:
-            for d in ner_records(fd):
-                genrdf(d, graph)
-            
-            
-        graph.bind('dcterms', DC)
-        graph.bind('schema', SO)
-        graph.bind('cc', CC)
-        graph.bind('trovenames', PROP)
-        graph.bind('foaf', FOAF)
-            
-        turtle = graph.serialize(format='turtle')
-        
-        basename, ext = os.path.splitext(os.path.splitext(datafile)[0])
-        
-        print os.path.join(args.outdir, basename + ".ttl")
-        with open(os.path.join(args.outdir, basename + ".ttl"), 'w') as out:
-            out.write(turtle)
-        
+    process_files(args.files, args.outdir)
+
+
         
         
     

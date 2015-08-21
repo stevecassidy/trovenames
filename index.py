@@ -27,8 +27,7 @@ class TroveIndex:
 
         self.datafile = datafile
         self.buildindex = buildindex
-        self.redis = redis.StrictRedis(host='localhost', port=6379, db=0)
-
+        #self.redis = redis.StrictRedis(host='localhost', port=6379, db=0)
 
         if not force and os.path.exists(self.indexfilename):
             self.read()
@@ -88,7 +87,7 @@ class TroveIndex:
         """Add this id/offset pair to the index"""
 
         self._index[id] = offset
-        self.redis.set(id, offset)
+        #self.redis.set(id, offset)
 
 
     def _build_index(self, chunksize):
@@ -147,8 +146,8 @@ class TroveIndex:
         if not id in self._index:
             return None
 
-        #offset = self._index[id]
-        offset = int(self.redis.get(id))
+        offset = self._index[id]
+        #offset = int(self.redis.get(id))
 
         with open(self.datafile) as fd:
 

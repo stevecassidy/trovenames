@@ -115,6 +115,8 @@ class TroveIndex:
         currentchunk = 0
         lastchunkoffset = 0
 
+        sys.stdout.write('INDEXING:')
+
         with self.opendata() as fd:
             done = False
             ln = 0
@@ -136,6 +138,7 @@ class TroveIndex:
 
                 # record a chunk if we hit chunksize lines
                 if ln != 0 and ln % chunksize == 0:
+                    sys.stdout.write('.')
                     if self._chunks == []:
                         start = 0
                     else:
@@ -154,6 +157,7 @@ class TroveIndex:
             if size > 0:
                 self._chunks.append((currentchunk, start, size))
                 currentchunk += 1
+        sys.stdout.write('DONE\n')
 
 
     def get_document(self, id):
@@ -185,7 +189,8 @@ class TroveIndex:
         to separate files in the directory outdir"""
 
         n = 1
-        write_size = 10000
+        write_size = 100000
+        sys.stdout.write('WRITING:')
         with self.opendata() as fd:
             for chunkid, offset, size in self.chunks:
                 chunkfile = self.chunk_filename(chunkid)
@@ -199,9 +204,8 @@ class TroveIndex:
                                         out.write(fd.read(write_size))
                                 else:
                                         out.write(fd.read(chunk_size-i))
-                                sys.stdout.write('.')
-                sys.stdout.write('|')
-        print()
+                sys.stdout.write('.')
+        sys.stdout.write('DONE\n')
 
 
 
@@ -275,7 +279,6 @@ if __name__=='__main__':
     filename = args[0]
 
     index = TroveIndex(filename, chunksize=options.chunksize, force=options.force, outdir=options.outdir)
-    index.write_chunks()
 
     if options.serve:
         from wsgiref.simple_server import make_server

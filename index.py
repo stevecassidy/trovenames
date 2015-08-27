@@ -4,13 +4,13 @@ import json
 import os
 import pickle
 import gzip
-import redis
+import sys
 
 class TroveIndex:
     """An index over a Trove data set"""
 
 
-    def __init__(self, datafile, chunksize=1000000, force=False, buildindex=True):
+    def __init__(self, datafile, chunksize=1000000, force=False, outdir='chunks', buildindex=True):
         """Create a Trove Index instance containing offsets of
         chunks of lines and optionally of each document.
 
@@ -19,21 +19,24 @@ class TroveIndex:
            (default 1000000)
         force - if True, the index and chunk lists are recomputed even if a stored
                  version is found (default False)
+        outdir - output directory, default 'chunks'
         buildindex - if True, we build a document index, if False only chunk index is built
            (default True)
 
         """
 
-
         self.datafile = datafile
         self.buildindex = buildindex
-        #self.redis = redis.StrictRedis(host='localhost', port=6379, db=0)
+        self.outdir = outdir
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
 
         if not force and os.path.exists(self.indexfilename):
             self.read()
         else:
             self._build_index(chunksize)
             self.write()
+            self.write_chunks()
 
     @property
     def chunks(self):
@@ -52,8 +55,17 @@ class TroveIndex:
     @property
     def indexfilename(self):
 
-        return self.datafile + ".idx"
+        name, ext = os.path.splitext(os.path.basename(self.datafile))
 
+        return os.path.join(self.outdir, name + ".idx")
+
+    def chunk_filename(self, chunkid):
+        """Generate an output chunk filename given this chunk id"""
+
+        name, ext = os.path.splitext(os.path.basename(self.datafile))
+        name += "-%d" % chunkid + ext
+
+        return os.path.join(self.outdir, name)
 
     def write(self):
         """Write a copy of the index to a file
@@ -83,23 +95,25 @@ class TroveIndex:
         else:
             return open(self.datafile, 'r+b')
 
-    def add_to_index(self, id, offset):
+    def add_to_index(self, id, chunk, offset, length):
         """Add this id/offset pair to the index"""
 
-        self._index[id] = offset
-        #self.redis.set(id, offset)
-
+        #print "INDEX", id, chunk, offset, length
+        #assert(id not in self._index)
+        self._index[id] = (self.chunk_filename(chunk), offset, length)
 
     def _build_index(self, chunksize):
         """Build an index of the documents in the datafile
 
             index consists of:
-            {<docid>: (<docoffset>, <doclength>),
+            {<docid>: (<chunkfile>, <offset>, <length>),
             ...}
         """
 
         self._index = dict()
         self._chunks = []
+        currentchunk = 0
+        lastchunkoffset = 0
 
         with self.opendata() as fd:
             done = False
@@ -111,11 +125,12 @@ class TroveIndex:
                     data = json.loads(line.decode('utf-8'))
                 except:
                     done = True
+                    continue
 
                 if self.buildindex:
                     if 'id' in data:
                         id = data['id']
-                        self.add_to_index(id, offset)
+                        self.add_to_index(id, currentchunk, offset-lastchunkoffset, len(line))
                     else:
                         print("Bad line: ", line)
 
@@ -124,18 +139,22 @@ class TroveIndex:
                     if self._chunks == []:
                         start = 0
                     else:
-                        start = self._chunks[-1][0] + self._chunks[-1][1]
+                        start = self._chunks[-1][1] + self._chunks[-1][2]
                     size = offset-start
-                    self._chunks.append((start, size))
+                    self._chunks.append((currentchunk, start, size))
+                    currentchunk += 1
+                    lastchunkoffset = offset
                 ln += 1
             # record the final chunk
             if len(self._chunks) > 0:
-                start = self._chunks[-1][0] + self._chunks[-1][1]
+                start = self._chunks[-1][1] + self._chunks[-1][2]
             else:
                 start = 0
             size = fd.tell()-start
             if size > 0:
-                self._chunks.append((start, size))
+                self._chunks.append((currentchunk, start, size))
+                currentchunk += 1
+
 
     def get_document(self, id):
         """Get a document from the datafile given
@@ -146,10 +165,9 @@ class TroveIndex:
         if not id in self._index:
             return None
 
-        offset = self._index[id]
-        #offset = int(self.redis.get(id))
+        chunkfile, offset, length = self._index[id]
 
-        with open(self.datafile) as fd:
+        with open(chunkfile) as fd:
 
             fd.seek(offset)
             line = fd.readline()
@@ -161,22 +179,19 @@ class TroveIndex:
         return data
 
 
-    def write_chunks(self, outdir):
+
+    def write_chunks(self):
         """Write out chunks of the original data file
         to separate files in the directory outdir"""
-
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
 
         n = 1
         write_size = 10000
         with self.opendata() as fd:
-            for offset, size in self.chunks:
-                name, ext = os.path.splitext(os.path.basename(self.datafile))
-                name += "-%d" % n + ext
+            for chunkid, offset, size in self.chunks:
+                chunkfile = self.chunk_filename(chunkid)
                 n += 1
                 chunk_size = offset + size
-                with open(os.path.join(outdir, name), 'w+b') as out:
+                with open(chunkfile, 'w+b') as out:
                         fd.seek(offset)
                         i_prv = 0
                         for i in range(offset, chunk_size, write_size):
@@ -245,10 +260,8 @@ if __name__=='__main__':
     parser.add_option("-c", "--chunksize",
                       action="store", dest="chunksize", type=int, default=1000000,
                       help="Chunk size for splitting data files, default 1000000")
-    parser.add_option("-w", "--writechunks", dest="outdir", action="store", default=None,
-                      help="write split files out to OUTDIR")
-    parser.add_option("-n", "--nodocindex", dest="docindex", action="store_false", default=True,
-                      help="don't build the document index (only chunks)")
+    parser.add_option("-w", "--outdir", dest="outdir", action="store", default='chunks',
+                      help="write split files out to OUTDIR, default 'chunks'")
     parser.add_option("-f", "--force", dest="force", action="store_true", default=False,
                       help="force re-indexing of data even if there is a stored index")
     parser.add_option("-s", "--serve", dest="serve", action="store_true", default=False,
@@ -261,11 +274,8 @@ if __name__=='__main__':
         exit()
     filename = args[0]
 
-    index = TroveIndex(filename, chunksize=options.chunksize, force=options.force)
-
-    if options.outdir:
-        index.write_chunks(options.outdir)
-
+    index = TroveIndex(filename, chunksize=options.chunksize, force=options.force, outdir=options.outdir)
+    index.write_chunks()
 
     if options.serve:
         from wsgiref.simple_server import make_server

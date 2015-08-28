@@ -139,6 +139,7 @@ class TroveIndex:
                 # record a chunk if we hit chunksize lines
                 if ln != 0 and ln % chunksize == 0:
                     sys.stdout.write('.')
+                    sys.stdout.flush()
                     if self._chunks == []:
                         start = 0
                     else:
@@ -205,6 +206,7 @@ class TroveIndex:
                                 else:
                                         out.write(fd.read(chunk_size-i))
                 sys.stdout.write('.')
+                sys.stdout.flush()
         sys.stdout.write('DONE\n')
 
 

@@ -36,7 +36,6 @@ class TroveIndex:
         else:
             self._build_index(chunksize)
             self.write()
-            self.write_chunks()
 
     @property
     def chunks(self):
@@ -146,6 +145,7 @@ class TroveIndex:
                         start = self._chunks[-1][1] + self._chunks[-1][2]
                     size = offset-start
                     self._chunks.append((currentchunk, start, size))
+                    self.write_chunk(currentchunk, start, size)
                     currentchunk += 1
                     lastchunkoffset = offset
                 ln += 1
@@ -157,6 +157,7 @@ class TroveIndex:
             size = fd.tell()-start
             if size > 0:
                 self._chunks.append((currentchunk, start, size))
+                self.write_chunk(currentchunk, start, size)
                 currentchunk += 1
         sys.stdout.write('DONE\n')
 
@@ -184,32 +185,22 @@ class TroveIndex:
         return data
 
 
+    def write_chunk(self, chunkid, offset, size):
+        """Write out a single chunk file"""
 
-    def write_chunks(self):
-        """Write out chunks of the original data file
-        to separate files in the directory outdir"""
-
-        n = 1
         write_size = 100000
-        sys.stdout.write('WRITING:')
         with self.opendata() as fd:
-            for chunkid, offset, size in self.chunks:
-                chunkfile = self.chunk_filename(chunkid)
-                n += 1
-                chunk_size = offset + size
-                with open(chunkfile, 'w+b') as out:
-                        fd.seek(offset)
-                        i_prv = 0
-                        for i in range(offset, chunk_size, write_size):
-                                if (chunk_size-i) >= write_size:
-                                        out.write(fd.read(write_size))
-                                else:
-                                        out.write(fd.read(chunk_size-i))
-                sys.stdout.write('.')
-                sys.stdout.flush()
-        sys.stdout.write('DONE\n')
-
-
+            chunkfile = self.chunk_filename(chunkid)
+            chunk_end = offset + size
+            with open(chunkfile, 'w+b') as out:
+                    fd.seek(offset)
+                    for i in range(offset, chunk_end, write_size):
+                            if (chunk_end-i) >= write_size:
+                                    out.write(fd.read(write_size))
+                            else:
+                                    out.write(fd.read(chunk_end-i))
+            sys.stdout.write('*')
+            sys.stdout.flush()
 
     def wsgi(self):
         """Return a WSGI application procedure to serve files from the

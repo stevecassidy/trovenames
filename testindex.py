@@ -11,9 +11,10 @@ class testIndex(unittest.TestCase):
     def test_create_index(self):
         """Create an index"""
 
+        outdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, outdir)
 
-        index = TroveIndex("test/short.dat", chunksize=2, outdir='test-outdir')
-        self.addCleanup(shutil.rmtree, 'test-outdir')
+        index = TroveIndex("test/short.dat", chunksize=2, outdir=outdir)
 
         docs = sorted([doc for doc in index.documents()])
         self.assertEquals(10, len(docs))

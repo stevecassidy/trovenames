@@ -175,7 +175,7 @@ if __name__=='__main__':
         exit()
     filename = args[0]
 
-    TroveIndexBuilder(filename, out=options.out)
+    TroveSwiftIndexBuilder(filename, out=options.out)
 
     if options.serve:
         from wsgiref.simple_server import make_server

@@ -136,6 +136,7 @@ class TroveSwiftIndexBuilder(TroveIndexBuilder):
 
         super(TroveSwiftIndexBuilder, self).__init__(datafile, out)
 
+
     def _build_index(self):
         """Build an index of the documents in the datafile
         """
@@ -163,8 +164,8 @@ if __name__=='__main__':
     import sys
 
     parser = optparse.OptionParser()
-    parser.add_option("-o", "--out", dest="out", action="store", default='index.idx',
-                      help="output filename for index")
+    parser.add_option("-o", "--outdir", dest="outdir", action="store", default='index',
+                      help="output directory for index files")
     parser.add_option("-s", "--serve", dest="serve", action="store_true", default=False,
                       help="start a web server to serve documents")
 
@@ -175,7 +176,15 @@ if __name__=='__main__':
         exit()
     filename = args[0]
 
-    TroveSwiftIndexBuilder(filename, out=options.out)
+    container = SwiftTextContainer()
+
+    if not os.path.exists(options.outdir):
+        os.makedirs(options.outdir)
+        
+    for doc in container.documents():
+        base, ext = os.path.splitext(doc['name'])
+        out = os.path.join(options.outdir, base + ".idx")
+        TroveSwiftIndexBuilder(doc['name'], out=out)
 
     if options.serve:
         from wsgiref.simple_server import make_server

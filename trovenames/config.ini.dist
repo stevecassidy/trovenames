@@ -1,0 +1,10 @@
+[default]
+AUTH_URL=https://keystone.rc.nectar.org.au:5000/v2.0/
+
+TENANT_ID=016dec894b7847668f45d564dc4bb476
+TENANT_NAME=HCSvLab
+
+USERNAME=<your username (email)>
+PASSWORD=<your password>
+
+CONTAINER=trove-test

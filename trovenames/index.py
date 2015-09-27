@@ -6,115 +6,98 @@ import pickle
 import gzip
 import sys
 
-class TroveIndex:
-    """An index over a Trove data set"""
+from swifttext import SwiftTextContainer
+
+def readconfig():
+    configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
+    config = ConfigParser.ConfigParser()
+    config.read(configfile)
+
+    return config
 
 
-    def __init__(self, datafile, chunksize=1000000, force=False, outdir='chunks', buildindex=True):
-        """Create a Trove Index instance containing offsets of
-        chunks of lines and optionally of each document.
+class TroveIndex(object):
+    """A Trove Index class that uses an in memory dictionary to store
+    the index"""
 
-        datafile - the name of the source data file, can be gzipped or plain text
-        chunksize - the size of chunks to locate in the file
-           (default 1000000)
-        force - if True, the index and chunk lists are recomputed even if a stored
-                 version is found (default False)
-        outdir - output directory, default 'chunks'
-        buildindex - if True, we build a document index, if False only chunk index is built
-           (default True)
+    def __init__(self, indexfile='index.idx'):
 
-        """
+        self._index = dict()
+        self.read(indexfile)
 
-        self.datafile = datafile
-        self.buildindex = buildindex
-        self.outdir = outdir
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
+    def read(self, indexfile):
+        """Read the index from a file"""
 
-        if not force and os.path.exists(self.indexfilename):
-            self.read()
-        else:
-            self._build_index(chunksize)
-            self.write()
+        with open(indexfile, 'r+b') as infile:
+            for line in infile:
+                id, offset, length, datafile = line.split(',')
+                self._index[id.strip()] = (int(offset), int(length), datafile.strip())
 
     @property
-    def chunks(self):
-        """Return a list of the chunks from the file
-        as a list of (start, size) tuples"""
-        return self._chunks
-
-
     def documents(self):
-        """Return an iterator over the document ids
-        stored in the index"""
+        """Return an iterator over the documents in the index"""
 
         return iter(self._index)
 
+    def get_document(self, id):
+        """Get a document from the datafile given
+        the document id. Return a Python dictionary
+        with the document properties or None if there
+        is no valid data at this offset"""
 
-    @property
-    def indexfilename(self):
+        if not id in self._index:
+            return None
 
-        name, ext = os.path.splitext(os.path.basename(self.datafile))
+        offset, length, datafile = self._index[id]
 
-        return os.path.join(self.outdir, name + ".idx")
+        with open(datafile) as fd:
 
-    def chunk_filename(self, chunkid):
-        """Generate an output chunk filename given this chunk id"""
+            fd.seek(offset)
+            line = fd.readline()
+            try:
+                data = json.loads(line)
+            except:
+                data = None
 
-        name, ext = os.path.splitext(os.path.basename(self.datafile))
-        name += "-%d" % chunkid + ext
+        return data
 
-        return os.path.join(self.outdir, name)
 
-    def write(self):
-        """Write a copy of the index to a file
-        with the same name as the data file + .idx"""
 
-        filename = self.indexfilename
+class TroveIndexBuilder(object):
+    """Create an index over a Trove data set"""
 
-        with open(filename, 'w+b') as out:
-            pickle.dump([self.datafile, self._index, self._chunks], out)
+    def __init__(self, datafile, out='index.idx'):
+        """Create a Trove Index containing offsets of each document write it to a file.
 
-    def read(self):
-        """Read the index from a file"""
+        datafile - the name of the source data file, can be gzipped or plain text
+        outdir - output directory, default 'index'
+        """
 
-        filename = self.indexfilename
+        self.datafile = datafile
+        self.indexfilename = out
 
-        with open(filename, 'r+b') as infile:
-            df, idx, ch = pickle.load(infile)
-            self.datafile = df
-            self._index = idx
-            self._chunks = ch
+        with open(self.indexfilename, 'w+b') as self.out:
+            self._build_index()
 
     def opendata(self):
-        """Open the data file"""
+        """Open the data file
+        """
 
         if self.datafile.endswith("gz"):
             return gzip.open(self.datafile, 'r+b')
         else:
             return open(self.datafile, 'r+b')
 
-    def add_to_index(self, id, chunk, offset, length):
-        """Add this id/offset pair to the index"""
 
-        #print "INDEX", id, chunk, offset, length
-        #assert(id not in self._index)
-        self._index[id] = (self.chunk_filename(chunk), offset, length)
-
-    def _build_index(self, chunksize):
-        """Build an index of the documents in the datafile
-
-            index consists of:
-            {<docid>: (<chunkfile>, <offset>, <length>),
-            ...}
+    def add_to_index(self, id, offset, length):
+        """Add this id/offset pair to the index
         """
 
-        self._index = dict()
-        self._chunks = []
-        currentchunk = 0
-        lastchunkoffset = 0
+        self.out.write("%s, %d, %d, %s\n" % (id, offset, length, self.datafile))
 
-        sys.stdout.write('INDEXING:')
+    def _build_index(self):
+        """Build an index of the documents in the datafile
+        """
 
         with self.opendata() as fd:
             done = False
@@ -128,125 +111,51 @@ class TroveIndex:
                     done = True
                     continue
 
-                if self.buildindex:
-                    if 'id' in data:
-                        id = data['id']
-                        self.add_to_index(id, currentchunk, offset-lastchunkoffset, len(line))
-                    else:
-                        print("Bad line: ", line)
-
-                # record a chunk if we hit chunksize lines
-                if ln != 0 and ln % chunksize == 0:
-                    sys.stdout.write('.')
-                    sys.stdout.flush()
-                    if self._chunks == []:
-                        start = 0
-                    else:
-                        start = self._chunks[-1][1] + self._chunks[-1][2]
-                    size = offset-start
-                    self._chunks.append((currentchunk, start, size))
-                    self.write_chunk(currentchunk, start, size)
-                    currentchunk += 1
-                    lastchunkoffset = offset
-                ln += 1
-            # record the final chunk
-            if len(self._chunks) > 0:
-                start = self._chunks[-1][1] + self._chunks[-1][2]
-            else:
-                start = 0
-            size = fd.tell()-start
-            if size > 0:
-                self._chunks.append((currentchunk, start, size))
-                self.write_chunk(currentchunk, start, size)
-                currentchunk += 1
-        sys.stdout.write('DONE\n')
+                if 'id' in data:
+                    id = data['id']
+                    self.add_to_index(id, offset, len(line))
+                else:
+                    print("Bad line: ", line)
 
 
-    def get_document(self, id):
-        """Get a document from the datafile given
-        the document id. Return a Python dictionary
-        with the document properties or None if there
-        is no valid data at this offset"""
-
-        if not id in self._index:
-            return None
-
-        chunkfile, offset, length = self._index[id]
-
-        with open(chunkfile) as fd:
-
-            fd.seek(offset)
-            line = fd.readline()
-            try:
-                data = json.loads(line)
-            except:
-                data = None
-
-        return data
 
 
-    def write_chunk(self, chunkid, offset, size):
-        """Write out a single chunk file"""
+class TroveSwiftIndexBuilder(TroveIndexBuilder):
+    """Build an index for documents stored in a Swift object store"""
 
-        write_size = 100000
-        with self.opendata() as fd:
-            chunkfile = self.chunk_filename(chunkid)
-            chunk_end = offset + size
-            with open(chunkfile, 'w+b') as out:
-                    fd.seek(offset)
-                    for i in range(offset, chunk_end, write_size):
-                            if (chunk_end-i) >= write_size:
-                                    out.write(fd.read(write_size))
-                            else:
-                                    out.write(fd.read(chunk_end-i))
-            sys.stdout.write('*')
-            sys.stdout.flush()
 
-    def wsgi(self):
-        """Return a WSGI application procedure to serve files from the
-        data set.
+    def __init__(self, datafile, out='index.idx'):
+        """Create a Trove Index containing offsets of each document write it to a file.
 
-        GET /document/<id> returns the whole JSON for this document
-        GET /document/<id>.txt returns the document text
+        datafile - the name of the source data file, can be gzipped or plain text
+        outdir - output directory, default 'index'
         """
 
+        self.swifttext = SwiftTextContainer()
+        self.datafile = datafile
 
-        def application(environ, start_response):
-            """WSGI Procedure"""
+        super(TroveSwiftIndexBuilder, self).__init__(datafile, out)
 
-            docmatch = re.match(r'/document/([0-9]+$)', environ['PATH_INFO'])
-            txtmatch = re.match(r'/document/([0-9]+)\.txt$', environ['PATH_INFO'])
-            if docmatch:
-                id = docmatch.group(1)
-                doc = self.get_document(id)
-                if doc:
-                    jsontext = json.dumps(doc)
-                    status = '200 OK'
-                    headers = [('Content-type', 'application/json')]
-                    start_response(status, headers)
-                    return [jsontext.encode('utf-8')]
-            elif txtmatch:
-                id = txtmatch.group(1)
-                doc = self.get_document(id)
-                if doc:
-                    text = doc['fulltext']
-                    status = '200 OK'
-                    headers = [('Content-type', 'text/plain')]
-                    start_response(status, headers)
-                    return [text.encode('utf-8')]
+    def _build_index(self):
+        """Build an index of the documents in the datafile
+        """
 
-            # if we get here then it's a 404
-            status = '404 Not Found'
-            headers = [('Content-type', 'text/plain')]
-            start_response(status, headers)
-            return [s.encode('utf-8') for s in ["Page Not Found\n",
-                    "Serving Trove data from %s\n" % self.datafile,
-                    "Total of %d unique documents.\n" % len(self._index)
-                    ]]
+        for offset, line in self.swifttext.document_lines(self.datafile):
 
-        return application
+            try:
+                data = json.loads(line.decode('utf-8'))
+            except:
+                done = True
+                continue
 
-import re
+            if 'id' in data:
+                id = data['id']
+                self.add_to_index(id, offset, len(line))
+            else:
+                print("Bad line: ", line)
+
+
+
 
 if __name__=='__main__':
 
@@ -254,13 +163,8 @@ if __name__=='__main__':
     import sys
 
     parser = optparse.OptionParser()
-    parser.add_option("-c", "--chunksize",
-                      action="store", dest="chunksize", type=int, default=1000000,
-                      help="Chunk size for splitting data files, default 1000000")
-    parser.add_option("-w", "--outdir", dest="outdir", action="store", default='chunks',
-                      help="write split files out to OUTDIR, default 'chunks'")
-    parser.add_option("-f", "--force", dest="force", action="store_true", default=False,
-                      help="force re-indexing of data even if there is a stored index")
+    parser.add_option("-o", "--out", dest="out", action="store", default='index.idx',
+                      help="output filename for index")
     parser.add_option("-s", "--serve", dest="serve", action="store_true", default=False,
                       help="start a web server to serve documents")
 
@@ -271,10 +175,13 @@ if __name__=='__main__':
         exit()
     filename = args[0]
 
-    index = TroveIndex(filename, chunksize=options.chunksize, force=options.force, outdir=options.outdir)
+    TroveIndexBuilder(filename, out=options.out)
 
     if options.serve:
         from wsgiref.simple_server import make_server
+
+        # read the index created above
+        index = TroveIndex(options.out)
 
         port = 3333
         server = make_server('localhost', port, index.wsgi())

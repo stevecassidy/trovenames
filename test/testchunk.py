@@ -3,9 +3,7 @@ import unittest
 import tempfile
 import shutil
 
-from chunk import chunk
-
-
+from trovenames.chunk import chunk
 
 class ChunkTest(unittest.TestCase):
 

@@ -3,7 +3,7 @@ import shutil
 import os
 import tempfile
 
-from trovenames.index import TroveIndexBuilder, TroveIndex, TroveSwiftIndexBuilder
+from trovenames.index import TroveIndexBuilder, TroveIndex, TroveSwiftIndexBuilder, TroveSwiftIndex
 
 
 class testIndex(unittest.TestCase):
@@ -87,6 +87,30 @@ class testIndex(unittest.TestCase):
         ref = "10, 279, 32, short.dat"
         self.assertEqual(ref, indexlines[9])
 
+
+    def test_read_index_swift(self):
+        """Read an index on a swift document from a file"""
+
+        indexfile = tempfile.mktemp()
+        self.addCleanup(os.unlink, indexfile)
+
+        TroveSwiftIndexBuilder("short.dat", out=indexfile)
+
+        index = TroveSwiftIndex(indexfile)
+
+        docs = sorted([doc for doc in index.documents])
+        self.assertEquals(10, len(docs))
+
+        self.assertEquals(['1', '10', '2', '3', '4', '5', '6', '7', '8', '9'], docs)
+
+        doc = index.get_document('1')
+        ref = {"id":"1","titleName":"Hello"}
+        self.assertDictEqual(ref, doc)
+
+        doc = index.get_document('10')
+        ref = {"id":"10","titleName":"Hello"}
+        self.assertNotEquals(None, doc)
+        self.assertDictEqual(ref, doc)
 
 if __name__=='__main__':
     unittest.main()

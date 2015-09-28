@@ -38,6 +38,16 @@ class SwiftTextContainer:
         for document in documents:
             yield document
 
+    def get_by_offset(self, objectname, offset, length):
+        """Get the content of this file starting at the given offset, reading length
+        bytes"""
+
+        # need to subtract one from the end point since Range includes the last byte
+        headers = {'Range': 'bytes=%d-%d' % (offset, offset+length-1)}
+        responseheaders, content = self.conn.get_object(self.container, objectname, headers=headers)
+
+        return content
+
     def document_lines(self, objectname):
         """An iterator over lines from an object in the Swift object store
         each result is a tuple (offset, line) where offset is the current

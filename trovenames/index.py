@@ -8,13 +8,6 @@ import sys
 
 from swifttext import SwiftTextContainer
 
-def readconfig():
-    configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
-    config = ConfigParser.ConfigParser()
-    config.read(configfile)
-
-    return config
-
 
 class TroveIndex(object):
     """A Trove Index class that uses an in memory dictionary to store
@@ -25,13 +18,21 @@ class TroveIndex(object):
         self._index = dict()
         self.read(indexfile)
 
+
+    def add_to_index(self, id, offset, length, datafile):
+        """Add an entry to the index"""
+
+        self._index[id.strip()] = (int(offset), int(length), datafile.strip())
+
+
     def read(self, indexfile):
         """Read the index from a file"""
 
         with open(indexfile, 'r+b') as infile:
             for line in infile:
                 id, offset, length, datafile = line.split(',')
-                self._index[id.strip()] = (int(offset), int(length), datafile.strip())
+                self.add_to_index(id.strip(), int(offset), int(length), datafile.strip())
+
 
     @property
     def documents(self):
@@ -120,6 +121,61 @@ class TroveIndexBuilder(object):
 
 
 
+
+
+
+class TroveSwiftIndex(object):
+    """A Trove Index class that uses an in memory dictionary to store
+    the index - for access to data stored in a Swift container"""
+
+    def __init__(self, indexfile='index.idx'):
+
+        self.swifttext = SwiftTextContainer()
+
+        self._index = dict()
+        self.read(indexfile)
+
+    def add_to_index(self, id, offset, length, datafile):
+        """Add an entry to the index"""
+
+        self._index[id.strip()] = (int(offset), int(length), datafile.strip())
+
+
+    def read(self, indexfile):
+        """Read the index from a file"""
+
+        with open(indexfile, 'r+b') as infile:
+            for line in infile:
+                id, offset, length, datafile = line.split(',')
+                self.add_to_index(id.strip(), int(offset), int(length), datafile.strip())
+
+    @property
+    def documents(self):
+        """Return an iterator over the documents in the index"""
+
+        return iter(self._index)
+
+    def get_document(self, id):
+        """Get a document from the datafile given
+        the document id. Return a Python dictionary
+        with the document properties or None if there
+        is no valid data at this offset"""
+
+        if not id in self._index:
+            return None
+
+        offset, length, datafile = self._index[id]
+
+        line = self.swifttext.get_by_offset(datafile, offset, length)
+
+        try:
+            data = json.loads(line)
+        except:
+            data = None
+
+        return data
+
+
 class TroveSwiftIndexBuilder(TroveIndexBuilder):
     """Build an index for documents stored in a Swift object store"""
 
@@ -180,7 +236,7 @@ if __name__=='__main__':
 
     if not os.path.exists(options.outdir):
         os.makedirs(options.outdir)
-        
+
     for doc in container.documents():
         base, ext = os.path.splitext(doc['name'])
         out = os.path.join(options.outdir, base + ".idx")

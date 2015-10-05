@@ -1,15 +1,15 @@
 
 import swiftclient
 import os
-from ConfigParser import ConfigParser
 import StringIO
 
+from util import readconfig
 
 class SwiftTextContainer:
 
     def __init__(self):
 
-        config = self.readconfig()
+        config = readconfig()
         user = config.get('default', "USERNAME")
         key = config.get('default', "PASSWORD")
         authurl = config.get('default', "AUTH_URL")
@@ -22,12 +22,7 @@ class SwiftTextContainer:
                                            auth_version='2.0',
                                            tenant_name=tenant_name )
 
-    def readconfig(self):
-        configfile = os.path.join(os.path.dirname(__file__), 'config.ini')
-        config = ConfigParser()
-        config.read(configfile)
 
-        return config
 
     def documents(self):
         """Return an iterator over the documents in this container

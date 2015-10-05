@@ -13,11 +13,14 @@ class TroveIndex(object):
     """A Trove Index class that uses an in memory dictionary to store
     the index"""
 
-    def __init__(self, indexfile='index.idx'):
+    def __init__(self, indexfile=None, indexdir=None):
 
         self._index = dict()
-        self.read(indexfile)
-
+        if indexfile:
+            self.read(indexfile)
+        elif indexdir:
+            for fname in os.listdir(indexdir):
+                self.read(os.path.join(indexdir, fname))
 
     def add_to_index(self, id, offset, length, datafile):
         """Add an entry to the index"""
@@ -27,6 +30,8 @@ class TroveIndex(object):
 
     def read(self, indexfile):
         """Read the index from a file"""
+
+        print "Reading", indexfile
 
         with open(indexfile, 'r+b') as infile:
             for line in infile:
@@ -124,36 +129,15 @@ class TroveIndexBuilder(object):
 
 
 
-class TroveSwiftIndex(object):
+class TroveSwiftIndex(TroveIndex):
     """A Trove Index class that uses an in memory dictionary to store
     the index - for access to data stored in a Swift container"""
 
-    def __init__(self, indexfile='index.idx'):
+    def __init__(self, indexfile=None, indexdir=None):
 
         self.swifttext = SwiftTextContainer()
 
-        self._index = dict()
-        self.read(indexfile)
-
-    def add_to_index(self, id, offset, length, datafile):
-        """Add an entry to the index"""
-
-        self._index[id.strip()] = (int(offset), int(length), datafile.strip())
-
-
-    def read(self, indexfile):
-        """Read the index from a file"""
-
-        with open(indexfile, 'r+b') as infile:
-            for line in infile:
-                id, offset, length, datafile = line.split(',')
-                self.add_to_index(id.strip(), int(offset), int(length), datafile.strip())
-
-    @property
-    def documents(self):
-        """Return an iterator over the documents in the index"""
-
-        return iter(self._index)
+        super(TroveSwiftIndex, self).__init__(indexfile, indexdir)
 
     def get_document(self, id):
         """Get a document from the datafile given
@@ -222,15 +206,12 @@ if __name__=='__main__':
     parser = optparse.OptionParser()
     parser.add_option("-o", "--outdir", dest="outdir", action="store", default='index',
                       help="output directory for index files")
-    parser.add_option("-s", "--serve", dest="serve", action="store_true", default=False,
-                      help="start a web server to serve documents")
 
     (options, args) = parser.parse_args()
 
-    if len(args) != 1:
+    if len(args) != 0:
         parser.print_help(sys.stdout)
         exit()
-    filename = args[0]
 
     container = SwiftTextContainer()
 
@@ -241,14 +222,3 @@ if __name__=='__main__':
         base, ext = os.path.splitext(doc['name'])
         out = os.path.join(options.outdir, base + ".idx")
         TroveSwiftIndexBuilder(doc['name'], out=out)
-
-    if options.serve:
-        from wsgiref.simple_server import make_server
-
-        # read the index created above
-        index = TroveIndex(options.out)
-
-        port = 3333
-        server = make_server('localhost', port, index.wsgi())
-        print("Listening on http://localhost:"+str(port) + "/")
-        server.serve_forever()

@@ -22,6 +22,8 @@ SPARQL = SPARQLWrapper(SPARQL_ENDPOINT)
 
 application = Bottle()
 
+application.troveindex = TroveSwiftIndex(indexdir=INDEX_DIR)
+
 
 @application.get('/static/<path:path>')
 def static_files(path):
@@ -264,7 +266,5 @@ def document(docid):
 
 if __name__=='__main__':
 
-
-    application.troveindex = TroveSwiftIndex(indexdir=INDEX_DIR)
 
     application.run(debug=True, reloader=True)

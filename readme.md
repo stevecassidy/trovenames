@@ -13,6 +13,13 @@ to handle the data making use of the facilities of the NeCTAR Research Cloud
 The original document format is a single large file with one document per line,
 each document is encoded as JSON.
 
+## Configuration
+
+This code uses a configuration file, in particular to access the Swift object
+store on the Nectar research cloud.  Copy the file `config.ini.dist` in
+the `trovenames` directory to `config.ini` and add your own username and
+password.
+
 ## Chunking
 
 To facilitate parallel processing on the data we split it into chunks of around
@@ -33,6 +40,19 @@ The script index.py implements the indexing process. There are classes to build
 an index from local files (TroveIndexBuilder) or from files on Swift
 (TroveSwiftIndexBuilder).  A class (TroveIndex) is provided to read the generated
 index and provide access to the individual documents.  
+
+## Processing Individual documents
+
+Once you have an index, you can iterate over documents to process them, this works
+on either local files (TroveIndex) or those stored on Swift (TroveSwiftIndex).  Here's
+a code snippet to do that:
+```
+index = TroveSwiftIndex(indexdir=indexdir)
+
+for docid in index.documents:
+    doc = index.get_document(docid)
+    # doc is a dictionary with document metadata and text
+```
 
 ## Named Entity Recognition
 

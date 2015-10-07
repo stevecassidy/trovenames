@@ -30,9 +30,6 @@ class TroveIndex(object):
 
     def read(self, indexfile):
         """Read the index from a file"""
-
-        print "Reading", indexfile
-
         with open(indexfile, 'r+b') as infile:
             for line in infile:
                 id, offset, length, datafile = line.split(',')

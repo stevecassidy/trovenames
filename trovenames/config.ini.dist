@@ -1,10 +1,18 @@
 [default]
-AUTH_URL=https://keystone.rc.nectar.org.au:5000/v2.0/
 
+# authentication details to access the Nectar research cloud
+# get these from the Nectar dashboard
+AUTH_URL=https://keystone.rc.nectar.org.au:5000/v2.0/
 TENANT_ID=016dec894b7847668f45d564dc4bb476
 TENANT_NAME=HCSvLab
-
 USERNAME=<your username (email)>
 PASSWORD=<your password>
 
+# name of the container to look for Trove data in
 CONTAINER=trove-test
+
+# local directory to write the index
+INDEX_DIR=index
+
+# URL of SPARQL endpoint for the web service
+SPARQL_ENDPOINT=http://trove.stevecassidy.net/sparql/

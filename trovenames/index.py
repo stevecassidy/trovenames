@@ -7,34 +7,59 @@ import gzip
 import sys
 
 from swifttext import SwiftTextContainer
+import redis
 
+def memory():
+    import resource
+
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024.0*1024.0*1024.0)
 
 class TroveIndex(object):
     """A Trove Index class that uses an in memory dictionary to store
     the index"""
 
-    def __init__(self, indexfile=None, indexdir=None):
+    def __init__(self):
 
-        self._index = dict()
+        self._redis = redis.Redis()
+
+
+    def reload(self, indexfile=None, indexdir=None):
+        """Reload the redis index from a file or directory"""
+
+        self._redis.flushdb()
+
         if indexfile:
-            self.read(indexfile)
+            self._read(indexfile)
         elif indexdir:
             for fname in os.listdir(indexdir):
-                self.read(os.path.join(indexdir, fname))
+                self._read(os.path.join(indexdir, fname))
+        print self._redis.dbsize()
 
     def add_to_index(self, id, offset, length, datafile):
         """Add an entry to the index"""
 
-        self._index[id.strip()] = (int(offset), int(length), datafile.strip())
+        entry = "|".join([offset, length, datafile.strip()])
+        self._redis.set(id.strip(), entry)
+
+    def get(self, id):
+        """Return a tuple of (offset, length, datfile) for this id
+        if present in the index, otherwise None"""
+
+        if not self._redis.exists(id):
+            return None
+        else:
+            value = self._redis.get(id)
+            offset, length, datafile = value.split('|')
+            return (int(offset), int(length), datafile)
 
 
-    def read(self, indexfile):
+    def _read(self, indexfile):
         """Read the index from a file"""
+        print "Reading index from ", indexfile
         with open(indexfile, 'r+b') as infile:
             for line in infile:
                 id, offset, length, datafile = line.split(',')
-                self.add_to_index(id.strip(), int(offset), int(length), datafile.strip())
-
+                self.add_to_index(id.strip(), offset.strip(), length.strip(), datafile.strip())
 
     @property
     def documents(self):
@@ -48,10 +73,10 @@ class TroveIndex(object):
         with the document properties or None if there
         is no valid data at this offset"""
 
-        if not id in self._index:
+        try:
+            offset, length, datafile = self.get(id)
+        except:
             return None
-
-        offset, length, datafile = self._index[id]
 
         with open(datafile) as fd:
 
@@ -130,11 +155,11 @@ class TroveSwiftIndex(TroveIndex):
     """A Trove Index class that uses an in memory dictionary to store
     the index - for access to data stored in a Swift container"""
 
-    def __init__(self, indexfile=None, indexdir=None):
+    def __init__(self):
 
         self.swifttext = SwiftTextContainer()
 
-        super(TroveSwiftIndex, self).__init__(indexfile, indexdir)
+        super(TroveSwiftIndex, self).__init__()
 
     def get_document(self, id):
         """Get a document from the datafile given
@@ -142,10 +167,10 @@ class TroveSwiftIndex(TroveIndex):
         with the document properties or None if there
         is no valid data at this offset"""
 
-        if not id in self._index:
+        try:
+            offset, length, datafile = self.get(id)
+        except:
             return None
-
-        offset, length, datafile = self._index[id]
 
         line = self.swifttext.get_by_offset(datafile, offset, length)
 
@@ -191,7 +216,6 @@ class TroveSwiftIndexBuilder(TroveIndexBuilder):
                 self.add_to_index(id, offset, len(line))
             else:
                 print("Bad line: ", line)
-
 
 
 

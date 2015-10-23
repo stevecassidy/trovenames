@@ -22,7 +22,7 @@ SPARQL = SPARQLWrapper(SPARQL_ENDPOINT)
 
 application = Bottle()
 
-application.troveindex = TroveSwiftIndex(indexdir=INDEX_DIR)
+application.troveindex = TroveSwiftIndex()
 
 
 @application.get('/static/<path:path>')

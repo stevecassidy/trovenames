@@ -38,18 +38,24 @@ class TroveIndex(object):
     def add_to_index(self, id, offset, length, datafile):
         """Add an entry to the index"""
 
-        entry = "|".join([offset, length, datafile.strip()])
-        self._redis.set(id.strip(), entry)
+        key = "document:%d" % int(id)
+
+        self._redis.hset(key, 'offset', int(offset))
+        self._redis.hset(key, 'length', int(length))
+        self._redis.hset(key, 'datafile', datafile.strip())
 
     def get(self, id):
         """Return a tuple of (offset, length, datfile) for this id
         if present in the index, otherwise None"""
 
-        if not self._redis.exists(id):
+        key = "document:%d" % int(id)
+
+        if not self._redis.exists(key):
             return None
         else:
-            value = self._redis.get(id)
-            offset, length, datafile = value.split('|')
+            offset = self._redis.hget(key, 'offset')
+            length = self._redis.hget(key, 'length')
+            datafile = self._redis.hget(key, 'datafile')
             return (int(offset), int(length), datafile)
 
 

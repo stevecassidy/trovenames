@@ -7,12 +7,7 @@ import gzip
 import sys
 
 from swifttext import SwiftTextContainer
-import redis
-
-def memory():
-    import resource
-
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024.0*1024.0*1024.0)
+from mysqlindex import index_connect, index_create_tables, index_get, index_insert
 
 class TroveIndex(object):
     """A Trove Index class that uses an in memory dictionary to store
@@ -20,52 +15,42 @@ class TroveIndex(object):
 
     def __init__(self):
 
-        self._redis = redis.Redis()
-
+        self._db = index_connect()
 
     def reload(self, indexfile=None, indexdir=None):
-        """Reload the redis index from a file or directory"""
+        """Reload the index from a file or directory"""
 
-        self._redis.flushdb()
+        # zero the database
+        index_create_tables(self._db)
 
         if indexfile:
             self._read(indexfile)
         elif indexdir:
             for fname in os.listdir(indexdir):
                 self._read(os.path.join(indexdir, fname))
-        print self._redis.dbsize()
 
     def add_to_index(self, id, offset, length, datafile):
         """Add an entry to the index"""
 
-        key = "document:%d" % int(id)
+        index_insert(self._cursor, id, offset, length, datafile)
 
-        self._redis.hset(key, 'offset', int(offset))
-        self._redis.hset(key, 'length', int(length))
-        self._redis.hset(key, 'datafile', datafile.strip())
 
     def get(self, id):
         """Return a tuple of (offset, length, datfile) for this id
         if present in the index, otherwise None"""
 
-        key = "document:%d" % int(id)
-
-        if not self._redis.exists(key):
-            return None
-        else:
-            offset = self._redis.hget(key, 'offset')
-            length = self._redis.hget(key, 'length')
-            datafile = self._redis.hget(key, 'datafile')
-            return (int(offset), int(length), datafile)
+        return index_get(self._db, id)
 
 
     def _read(self, indexfile):
         """Read the index from a file"""
         print "Reading index from ", indexfile
+        self._cursor = self._db.cursor()
         with open(indexfile, 'r+b') as infile:
             for line in infile:
                 id, offset, length, datafile = line.split(',')
                 self.add_to_index(id.strip(), offset.strip(), length.strip(), datafile.strip())
+            self._db.commit()
 
     @property
     def documents(self):

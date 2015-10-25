@@ -7,3 +7,5 @@ from index import TroveIndex, TroveSwiftIndex
 idx = TroveSwiftIndex()
 
 idx.reload(indexdir=sys.argv[1])
+
+print idx.get_document(2)

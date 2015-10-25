@@ -29,9 +29,9 @@ def index_create_tables(conn):
 
     sql = """
 CREATE TABLE IF NOT EXISTS documents (
-   id int unique primary key,
-   offset int,
-   length int,
+   id INT unique primary key,
+   offset BIGINT,
+   length INT,
    document VARCHAR(100)
 )"""
 
@@ -47,7 +47,7 @@ def index_insert(cursor, id, offset, length, document):
     cursor.execute("SELECT id FROM documents WHERE id=%s", (id,))
     if cursor.fetchone():
         return
-        
+
     sql = """
 INSERT INTO documents (id, offset, length, document)
 VALUES (%s, %s, %s, %s)"""

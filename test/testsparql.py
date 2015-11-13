@@ -17,7 +17,7 @@ SPARQL = SPARQLWrapper(SPARQL_ENDPOINT)
 
 query = """
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX proc: <http://trove.stevecassidy.net/schema/>
+PREFIX proc: <http://trove.alveo.edu.au/schema/>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
 SELECT distinct ?nameid ?name WHERE {

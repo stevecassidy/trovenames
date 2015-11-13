@@ -30,11 +30,11 @@
 @prefix rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt; .
 @prefix rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
 @prefix schema: &lt;http://schema.org/&gt; .
-@prefix trovenamesq: &lt;http://trove.stevecassidy.net/schema/&gt; .
+@prefix trovenamesq: &lt;http://trove.alveo.edu.au/schema/&gt; .
 @prefix xml: &lt;http://www.w3.org/XML/1998/namespace&gt; .
 @prefix xsd: &lt;http://www.w3.org/2001/XMLSchema#&gt; .
 
-&lt;http://trove.stevecassidy.net/source/62aebcd1a45594ab33295a5c2a63f103&gt; a dcterms:Collection ;
+&lt;http://trove.alveo.edu.au/source/62aebcd1a45594ab33295a5c2a63f103&gt; a dcterms:Collection ;
     dcterms:hasPart &lt;http://trove.nla.gov.au/ndp/del/article/10000009&gt;,
         &lt;http://trove.nla.gov.au/ndp/del/article/10000017&gt;,
         &lt;http://trove.nla.gov.au/ndp/del/article/10000023&gt;;
@@ -42,13 +42,13 @@
 
 &lt;http://trove.nla.gov.au/ndp/del/article/10000009&gt; a cc:Work ;
     dcterms:created &quot;1909-11-19&quot; ;
-    dcterms:source &lt;http://trove.stevecassidy.net/source/62aebcd1a45594ab33295a5c2a63f103&gt; ;
+    dcterms:source &lt;http://trove.alveo.edu.au/source/62aebcd1a45594ab33295a5c2a63f103&gt; ;
     dcterms:title &quot;SPORTING. THE TURF. HOBART TROTTING CLUB.&quot; ;
-    schema:mentions &lt;http://trove.stevecassidy.net/name/0d680f66a21d8099c168271eadc084c2&gt; ;
+    schema:mentions &lt;http://trove.alveo.edu.au/name/0d680f66a21d8099c168271eadc084c2&gt; ;
     trovenamesq:context &quot;... the list, claims St winners. Stanley Wootton, Frank&#x27;s younger brotheir, ha...&quot; ;
     trovenamesq:year 1909 .
 
-&lt;http://trove.stevecassidy.net/name/0d680f66a21d8099c168271eadc084c2&gt; a trovenamesq:Name ;
+&lt;http://trove.alveo.edu.au/name/0d680f66a21d8099c168271eadc084c2&gt; a trovenamesq:Name ;
     trovenamesq:lastname &quot;wootton&quot; ;
     trovenamesq:word &quot;stanley&quot;, &quot;wootton&quot; ;
     rdf:label &quot;Stanley Wootton&quot; .
@@ -60,19 +60,19 @@
   JSON response as follows:</p>
           
    <ul>
-           <li><code>http://trove.stevecassidy.net/name/&lt;nameid&gt;</code>
+           <li><code>http://trove.alveo.edu.au/name/&lt;nameid&gt;</code>
            returns a JSON result with the name associated with this node and
            a list of the articles that this name is found in (currently limited
            to the first 100 articles).</li>
             
-            <li><code>http://trove.stevecassidy.net/associates/&lt;nameid&gt;</code>
+            <li><code>http://trove.alveo.edu.au/associates/&lt;nameid&gt;</code>
            returns a JSON result with a list of the <em>associates</em> of this
            name id. An associate is any name that is referenced in one or more
            articles with the other name.  An optional <code>limit</code> query
            variable can be added to restrict the number of results, by default
            50 associates are shown.</li>         
                    
-           <li><code>http://trove.stevecassidy.net/source/&lt;sourceid&gt;</code>
+           <li><code>http://trove.alveo.edu.au/source/&lt;sourceid&gt;</code>
             returns a JSON result with a list of the article URLs that are 
             contained in this source and the title of the source.</li>
 

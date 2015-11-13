@@ -4,16 +4,16 @@ import json
 import gzip
 import rdflib
 import hashlib
-import string 
+import string
 
 from rdflib.namespace import XSD
 
 SO = rdflib.Namespace('http://schema.org/')
 
-SOURCE = rdflib.Namespace('http://trove.stevecassidy.net/source/')
-NAME = rdflib.Namespace('http://trove.stevecassidy.net/name/')
-PROP = rdflib.Namespace('http://trove.stevecassidy.net/schema/')
-FULLTEXT = rdflib.Namespace('http://trove.stevecassidy.net/document/')
+SOURCE = rdflib.Namespace('http://trove.alveo.edu.au/source/')
+NAME = rdflib.Namespace('http://trove.alveo.edu.au/name/')
+PROP = rdflib.Namespace('http://trove.alveo.edu.au/schema/')
+FULLTEXT = rdflib.Namespace('http://trove.alveo.edu.au/document/')
 
 
 FOAF = rdflib.Namespace('http://xmlns.com/foaf/0.1/')
@@ -27,7 +27,7 @@ CC = rdflib.Namespace(u"https://creativecommons.org/ns#")
 def ner_records(fd):
     """Read the JSON data in filename, yielding a sequence
     of dictionaries, one per record"""
-    
+
     text = ""
     for line in fd.readlines():
         line = line.strip().decode('utf-8')
@@ -45,23 +45,23 @@ def ner_records(fd):
 
 def genID(prefix, name):
     """Return a URI for this name"""
-    
+
     m = hashlib.md5()
     m.update(name.encode())
     h = m.hexdigest()
-    
+
     return prefix[h]
-    
+
 def normalise_name(name):
     """Return a normalised version of this name"""
-    
+
     return string.capwords(name)
-    
+
 
 
 def genrdf(record, graph):
     """Generate RDF for a single record"""
-    
+
     work = WORK[record['article_id']]
     name = genID(NAME, normalise_name(record['name']))
     source = genID(SOURCE, record['article_source'])
@@ -71,12 +71,12 @@ def genrdf(record, graph):
     graph.add((work, DC.title, rdflib.Literal(record['article_title'])))
     graph.add((work, DC.source, source))
     graph.add((work, DC.identifier, rdflib.Literal(record['article_id'])))
-    graph.add((work, PROP.fulltext, FULLTEXT[record['article_id']+".txt"]))    
-    
+    graph.add((work, PROP.fulltext, FULLTEXT[record['article_id']+".txt"]))
+
     # TODO: add article year
     year = int(record['article_date'][0:4])
     graph.add((work, PROP.year, rdflib.Literal(year)))
-    
+
     graph.add((name, RDF.type, PROP.Name))
     # add the normalised name as FOAF.name properties
     graph.add((name, FOAF.name, rdflib.Literal(normalise_name(record['name']))))
@@ -85,7 +85,7 @@ def genrdf(record, graph):
         graph.add((name, PROP.word, rdflib.Literal(word.lower())))
     lastname = record['name'].split()[-1]
     graph.add((name, FOAF.family_name, rdflib.Literal(lastname.lower())))
-    
+
     # record the mention
     graph.add((work, SO.mentions, name))
     graph.add((work, PROP.context, rdflib.Literal(record['name_context'])))
@@ -98,7 +98,7 @@ def genrdf(record, graph):
 
 def process_files(files, outdir, prefix="trovenames", threshold=1000000):
     """Turn these files into RDF"""
-    
+
 
     graph = rdflib.Graph()
     records = 0
@@ -116,48 +116,43 @@ def process_files(files, outdir, prefix="trovenames", threshold=1000000):
                     graph = rdflib.Graph()
                 else:
                     records += 1
-                    
+
         # finish off
         output_graph(graph, prefix + "-" + str(outcount), outdir)
-        
+
 
 
 def output_graph(graph, basename, outdir):
     """Write this graph out to the right place"""
-    
+
     graph.bind('dcterms', DC)
     graph.bind('schema', SO)
     graph.bind('cc', CC)
     graph.bind('trovenames', PROP)
     graph.bind('foaf', FOAF)
-        
+
     turtle = graph.serialize(format='turtle')
-        
+
     outfile = os.path.join(outdir, basename + ".ttl")
     with open(outfile, 'w') as out:
         out.write(turtle.decode('utf-8'))
-    
-    print("\t>> ", outfile)
-        
+
+    print "\t>> ", outfile
+
     return outfile
 
 
 if __name__=='__main__':
-    
+
     import sys, os
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='convert NER output to RDF')
     parser.add_argument('--outdir', default='results', help='directory for output files')
     parser.add_argument('files', metavar='files', nargs='+', help='input data files')
     args = parser.parse_args()
-    
+
     if not os.path.exists(args.outdir):
         os.makedirs(args.outdir)
 
     process_files(args.files, args.outdir)
-
-
-        
-        
-    

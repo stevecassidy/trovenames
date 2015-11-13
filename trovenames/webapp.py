@@ -57,7 +57,7 @@ def searchnames():
 
         query = """
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX proc: <http://trove.stevecassidy.net/schema/>
+PREFIX proc: <http://trove.alveo.edu.au/schema/>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
 SELECT distinct ?nameid ?name WHERE {
@@ -88,7 +88,7 @@ def source(sourceid):
     query = """
     PREFIX dcterms: <http://purl.org/dc/terms/>
     SELECT ?title WHERE {
-      <http://trove.stevecassidy.net/source/%s> dcterms:title ?title .
+      <http://trove.alveo.edu.au/source/%s> dcterms:title ?title .
     }
     """ % (sourceid,)
 
@@ -106,7 +106,7 @@ def source(sourceid):
     query = """
     PREFIX dcterms: <http://purl.org/dc/terms/>
     SELECT ?article WHERE {
-      <http://trove.stevecassidy.net/source/%s> dcterms:hasPart ?article .
+      <http://trove.alveo.edu.au/source/%s> dcterms:hasPart ?article .
     }
     """ % (sourceid,)
 
@@ -131,7 +131,7 @@ def get_name(nameid):
     PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
     SELECT ?name WHERE {
-      <http://trove.stevecassidy.net/name/%s> foaf:name ?name .
+      <http://trove.alveo.edu.au/name/%s> foaf:name ?name .
     }
     """ % (nameid,)
 
@@ -161,7 +161,7 @@ def name(nameid):
     prefix dcterms: <http://purl.org/dc/terms/>
 
     SELECT ?article ?title ?id WHERE {
-      ?article schema:mentions <http://trove.stevecassidy.net/name/%s> .
+      ?article schema:mentions <http://trove.alveo.edu.au/name/%s> .
       ?article dcterms:title ?title .
       ?article dcterms:identifier ?id .
     }
@@ -208,11 +208,11 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 SELECT ?otherperson ?name (count(?name) as ?count) WHERE {
-      ?article schema:mentions <http://trove.stevecassidy.net/name/%s> .
+      ?article schema:mentions <http://trove.alveo.edu.au/name/%s> .
     ?article schema:mentions ?otherperson .
     ?article dcterms:title ?articletitle .
     ?otherperson foaf:name ?name .
-  filter (<http://trove.stevecassidy.net/name/%s> != ?otherperson)
+  filter (<http://trove.alveo.edu.au/name/%s> != ?otherperson)
 } group by ?name
 order by desc(?count)
     """ % (nameid, nameid)
@@ -231,7 +231,7 @@ order by desc(?count)
         assoc.append(d)
 
 
-    namelink = "http://trove.stevecassidy.net/name/%s" % (nameid,)
+    namelink = "http://trove.alveo.edu.au/name/%s" % (nameid,)
 
     info = {'namelink': namelink, 'name': name, 'associates': assoc}
 

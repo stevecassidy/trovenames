@@ -30,7 +30,7 @@ for gzf in $(swift list trove-ttl); do
 
      for f in *.ttl; do
 	      echo $f
-          4s-import  -v trove --add --model http://trove.stevecassidy.net/ $f
+          4s-import  -v trove --add --model http://trove.alveo.edu.au/ $f
           rm $f
       done
 

@@ -15,4 +15,4 @@ CONTAINER=trove-test
 INDEX_DIR=index
 
 # URL of SPARQL endpoint for the web service
-SPARQL_ENDPOINT=http://trove.stevecassidy.net/sparql/
+SPARQL_ENDPOINT=http://trove.alveo.edu.au/sparql/

@@ -40,7 +40,6 @@ class SwiftTextContainer:
         # need to subtract one from the end point since Range includes the last byte
         headers = {'Range': 'bytes=%d-%d' % (offset, offset+length-1)}
         responseheaders, content = self.conn.get_object(self.container, objectname, headers=headers)
-
         return content
 
     def document_lines(self, objectname):

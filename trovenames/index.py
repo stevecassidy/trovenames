@@ -128,17 +128,20 @@ class TroveIndexBuilder(object):
             while not done:
                 offset = fd.tell()
                 line = fd.readline()
+                if line == '':
+                    break
                 try:
                     data = json.loads(line.decode('utf-8'))
                 except:
                     done = True
+                    print "Bad line: '%s' %d" % (line, offset)
                     continue
 
                 if 'id' in data:
                     id = data['id']
                     self.add_to_index(id, offset, len(line))
                 else:
-                    print("Bad line: ", line)
+                    print "Bad line: ", line
 
 
 
@@ -210,7 +213,7 @@ class TroveSwiftIndexBuilder(TroveIndexBuilder):
                 id = data['id']
                 self.add_to_index(id, offset, len(line))
             else:
-                print("Bad line: ", line)
+                print "Bad line: ", line
 
 
 
@@ -220,21 +223,26 @@ if __name__=='__main__':
     import sys
 
     parser = optparse.OptionParser()
+    parser.add_option("-s", "--swift", dest="swift", action="store_true", default=False,
+                      help="read data from a swift container")
     parser.add_option("-o", "--outdir", dest="outdir", action="store", default='index',
                       help="output directory for index files")
 
     (options, args) = parser.parse_args()
 
-    if len(args) != 0:
-        parser.print_help(sys.stdout)
-        exit()
-
-    container = SwiftTextContainer()
 
     if not os.path.exists(options.outdir):
         os.makedirs(options.outdir)
 
-    for doc in container.documents():
-        base, ext = os.path.splitext(doc['name'])
-        out = os.path.join(options.outdir, base + ".idx")
-        TroveSwiftIndexBuilder(doc['name'], out=out)
+    if options.swift:
+        container = SwiftTextContainer()
+
+        for doc in container.documents():
+            base, ext = os.path.splitext(doc['name'])
+            out = os.path.join(options.outdir, base + ".idx")
+            TroveSwiftIndexBuilder(doc['name'], out=out)
+    else:
+        for doc in args:
+            base, ext = os.path.splitext(os.path.basename(doc))
+            out = os.path.join(options.outdir, base + ".idx")
+            TroveIndexBuilder(doc, out=out)

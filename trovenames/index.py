@@ -110,9 +110,9 @@ class TroveIndexBuilder(object):
         """
 
         if self.datafile.endswith("gz"):
-            return gzip.open(self.datafile, 'r+b')
+            return gzip.open(self.datafile, 'rb')
         else:
-            return open(self.datafile, 'r+b')
+            return open(self.datafile, 'rb')
 
 
     def add_to_index(self, id, offset, length):

@@ -1,7 +1,7 @@
 
 import swiftclient
 import os
-import StringIO
+from cStringIO import StringIO
 
 from util import readconfig
 
@@ -55,9 +55,9 @@ class SwiftTextContainer:
 
         for block in content:
 
-            stream = StringIO.StringIO(remainder + block)
+            stream = StringIO(remainder + block)
             for line in stream:
-                if line.endswith('\n'):
+                if line.endswith('}\n'):
                     yield (offset, line)
                     offset += len(line)
                 else:
@@ -67,8 +67,11 @@ class SwiftTextContainer:
 if __name__=='__main__':
 
     sw = SwiftTextContainer()
-    for doc in sw.documents():
-        print doc
+    #for doc in sw.documents():
+    #    print doc
 
-    for line in sw.document_lines('trove-small.dat'):
-        print line
+    count = 0
+    for line in sw.document_lines('trove-sample.dat'):
+        if not line[1].endswith('}\n'):
+            print count, line[0], line[1][0:3], '...', line[1][-10:]
+        count += 1

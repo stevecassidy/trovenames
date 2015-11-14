@@ -15,7 +15,11 @@ class TroveIndex(object):
 
     def __init__(self):
 
-        self._db = index_connect()
+        try:
+            self._db = index_connect()
+        except:
+            print "No database connection for document index!"
+            self._db = None
 
     def reload(self, indexfile=None, indexdir=None):
         """Reload the index from a file or directory"""
@@ -199,7 +203,7 @@ class TroveSwiftIndexBuilder(TroveIndexBuilder):
             try:
                 data = json.loads(line.decode('utf-8'))
             except:
-                done = True
+                print "Bad line: ", offset, line
                 continue
 
             if 'id' in data:

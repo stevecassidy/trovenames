@@ -7,10 +7,13 @@ import gzip
 import sys
 
 from swifttext import SwiftTextContainer
-from mysqlindex import index_connect, index_create_tables, index_get, index_insert
+try:
+    from mysqlindex import index_connect, index_create_tables, index_get, index_insert
+except:
+    print "can't load MySQL"
 
 class TroveIndex(object):
-    """A Trove Index class that uses an in memory dictionary to store
+    """A Trove Index class that uses mysql to store
     the index"""
 
     def __init__(self):

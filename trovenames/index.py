@@ -241,11 +241,13 @@ if __name__=='__main__':
         container = SwiftTextContainer()
 
         for doc in container.documents():
+            print doc
             base, ext = os.path.splitext(doc['name'])
             out = os.path.join(options.outdir, base + ".idx")
             TroveSwiftIndexBuilder(doc['name'], out=out)
     else:
         for doc in args:
+            print doc
             base, ext = os.path.splitext(os.path.basename(doc))
             out = os.path.join(options.outdir, base + ".idx")
             TroveIndexBuilder(doc, out=out)

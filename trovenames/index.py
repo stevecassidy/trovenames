@@ -171,6 +171,8 @@ class TroveSwiftIndex(TroveIndex):
         except:
             return None
 
+        # local indexer has stored full path to the file, truncate for swift 
+        datafile = os.path.basename(datafile)
         line = self.swifttext.get_by_offset(datafile, offset, length)
 
         try:

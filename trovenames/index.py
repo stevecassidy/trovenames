@@ -10,7 +10,7 @@ from swifttext import SwiftTextContainer
 try:
     from mysqlindex import index_connect, index_create_tables, index_get, index_insert
 except:
-    print "can't load MySQL"
+    pass
 
 class TroveIndex(object):
     """A Trove Index class that uses mysql to store
@@ -25,10 +25,8 @@ class TroveIndex(object):
             self._db = None
 
     def reload(self, indexfile=None, indexdir=None):
-        """Reload the index from a file or directory"""
-
-        # zero the database
-        index_create_tables(self._db)
+        """Reload the index from a file or directory,
+        Note, this does not reset the database,"""
 
         if indexfile:
             self._read(indexfile)
@@ -53,7 +51,7 @@ class TroveIndex(object):
         """Read the index from a file"""
         print "Reading index from ", indexfile
         self._cursor = self._db.cursor()
-        with open(indexfile, 'r+b') as infile:
+        with open(indexfile, 'rb') as infile:
             for line in infile:
                 id, offset, length, datafile = line.split(',')
                 self.add_to_index(id.strip(), offset.strip(), length.strip(), datafile.strip())

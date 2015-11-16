@@ -44,15 +44,23 @@ CREATE TABLE IF NOT EXISTS documents (
 def index_insert(cursor, id, offset, length, document):
     """Add an entry, does not commit"""
 
+    # update if the id is already present, otherwise insert
+
     cursor.execute("SELECT id FROM documents WHERE id=%s", (id,))
+
     if cursor.fetchone():
-        return
+        sql = """UPDATE documents
+        SET  offset=%s, length=%s, document=%s
+        WHERE id=%s"""
+        
+        cursor.execute(sql, (offset, length, document, id))
+    else:
+        sql = """INSERT INTO documents (id, offset, length, document)
+                 VALUES (%s, %s, %s, %s)"""
 
-    sql = """
-INSERT INTO documents (id, offset, length, document)
-VALUES (%s, %s, %s, %s)"""
+        cursor.execute(sql, (id, offset, length, document))
 
-    cursor.execute(sql, (id, offset, length, document))
+
 
 def index_get(conn, id):
     """Get data for a document id, return a tuple
@@ -67,21 +75,10 @@ def index_get(conn, id):
     return result
 
 
-
-
 if __name__=='__main__':
 
+    print "Creating database and tables..."
     index_createdb()
-
     conn = index_connect()
-
     index_create_tables(conn)
-
-    cursor = conn.cursor()
-
-    index_insert(cursor, 1, 2, 3, 'foo.txt')
-    index_insert(cursor, 2, 3, 4, 'bar.txt')
-    conn.commit()
-
-    info = index_get(conn, 1)
-    print info
+    print "...Done"

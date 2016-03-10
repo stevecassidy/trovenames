@@ -16,3 +16,7 @@ INDEX_DIR=index
 
 # URL of SPARQL endpoint for the web service
 SPARQL_ENDPOINT=http://trove.alveo.edu.au/sparql/
+
+
+# reporting/checkpoint interval for word counter
+WC_INTERVAL=100

@@ -8,6 +8,7 @@ from bottle import Bottle, template, request, response, static_file, abort
 import rdflib
 from SPARQLWrapper import SPARQLWrapper, JSON
 import json
+from urlparse import urlsplit
 
 from index import TroveSwiftIndex
 from util import readconfig
@@ -64,6 +65,7 @@ SELECT distinct ?nameid ?name WHERE {
   ?nameid proc:word "%s" .
   ?nameid foaf:name ?name .
 }
+order by ?name
         """ % (nameq.lower(),)
 
         SPARQL.setQuery(query)
@@ -72,7 +74,9 @@ SELECT distinct ?nameid ?name WHERE {
 
         links = []
         for result in results["results"]["bindings"]:
-            links.append({'link': result["nameid"]["value"], 'name': result["name"]["value"]})
+            # rewrite urls to work in dev environment - make them relative
+            scheme, netloc, path, query, fragment = urlsplit(result["nameid"]["value"])
+            links.append({'link': path, 'name': result["name"]["value"]})
 
         return template('namesearch.tpl', links=links)
 
@@ -155,18 +159,30 @@ def name(nameid):
     """Return information about this name"""
 
     name = get_name(nameid)
+    limit = 100
+    if request.query.page:
+        page = int(request.query.page)
+    else:
+        page = 1
+
+    offset = limit * (page - 1)
 
     query = """
-    PREFIX schema: <http://schema.org/>
-    prefix dcterms: <http://purl.org/dc/terms/>
+PREFIX schema: <http://schema.org/>
+prefix dcterms: <http://purl.org/dc/terms/>
+prefix trove: <http://trove.alveo.edu.au/schema/>
 
-    SELECT ?article ?title ?id WHERE {
-      ?article schema:mentions <http://trove.alveo.edu.au/name/%s> .
-      ?article dcterms:title ?title .
-      ?article dcterms:identifier ?id .
-    }
-    limit 100
-    """ % (nameid,)
+SELECT ?article ?title ?id ?date ?textlink WHERE {
+  ?article schema:mentions <http://trove.alveo.edu.au/name/%s> .
+  ?article dcterms:title ?title .
+  ?article dcterms:identifier ?id .
+  ?article dcterms:created ?date .
+  ?article trove:fulltext ?textlink .
+}
+order by ?date
+limit %s
+offset %s
+    """ % (nameid,limit, offset)
 
     SPARQL.setQuery(query)
     SPARQL.setReturnFormat(JSON)
@@ -174,14 +190,16 @@ def name(nameid):
 
     articles = []
     for r in results["results"]["bindings"]:
-        textlink = "/document/" + r["id"]["value"]
-        articles.append({'title': r["title"]["value"], 'textlink': textlink, 'link': r["article"]["value"]})
+        articles.append({'title': r["title"]["value"],
+                         'textlink': r["textlink"]["value"],
+                         'date': r["date"]["value"],
+                         'link': r["article"]["value"]})
 
 
     alink = "/associates/%s" % (nameid,)
     namelink = "/name/%s" % (nameid,)
 
-    info = {'namelink': namelink, 'name': name, 'mentioned_in': articles, 'associates': alink }
+    info = {'namelink': namelink, 'name': name, 'mentioned_in': articles, 'associates': alink, 'page': page}
 
     if 'application/json' in request.headers['accept']:
         return info
@@ -231,7 +249,7 @@ order by desc(?count)
         assoc.append(d)
 
 
-    namelink = "http://trove.alveo.edu.au/name/%s" % (nameid,)
+    namelink = "/name/%s" % (nameid,)
 
     info = {'namelink': namelink, 'name': name, 'associates': assoc}
 

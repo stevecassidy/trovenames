@@ -1,26 +1,19 @@
 """Functions to store index in a mysql database"""
 
-import MySQLdb
+import sqlite3
 from util import readconfig
 
 config = readconfig()
-DB_USER = config.get('default', 'DB_USER')
-DB_PASS = config.get('default', 'DB_PASS')
 DB_DATABASE = config.get('default', 'DB_DATABASE')
-
-# mysqladmin -u root -p  create trovenames
 
 def index_createdb():
 
-    conn = MySQLdb.connect(user=DB_USER, passwd=DB_PASS)
-    cursor = conn.cursor()
-    cursor.execute('CREATE DATABASE IF NOT EXISTS ' + DB_DATABASE)
-
+    conn = sqlite3.connect(DB_DATABASE)
 
 def index_connect():
     """Connect to the database"""
 
-    conn = MySQLdb.connect(user=DB_USER, passwd=DB_PASS, db=DB_DATABASE)
+    conn = sqlite3.connect(DB_DATABASE)
 
     return conn
 
@@ -46,17 +39,17 @@ def index_insert(cursor, id, offset, length, document):
 
     # update if the id is already present, otherwise insert
 
-    cursor.execute("SELECT id FROM documents WHERE id=%s", (id,))
+    cursor.execute("SELECT id FROM documents WHERE id=?", (id,))
 
     if cursor.fetchone():
         sql = """UPDATE documents
-        SET  offset=%s, length=%s, document=%s
-        WHERE id=%s"""
+        SET  offset=?, length=?, document=?
+        WHERE id=?"""
 
         cursor.execute(sql, (offset, length, document, id))
     else:
         sql = """INSERT INTO documents (id, offset, length, document)
-                 VALUES (%s, %s, %s, %s)"""
+                 VALUES (?, ?, ?, ?)"""
 
         cursor.execute(sql, (id, offset, length, document))
 
@@ -66,7 +59,7 @@ def index_get(conn, id):
     """Get data for a document id, return a tuple
     of (offset, length, document)"""
 
-    sql = """SELECT offset, length, document FROM documents WHERE id=%s"""
+    sql = """SELECT offset, length, document FROM documents WHERE id=?"""
 
     cursor = conn.cursor()
     cursor.execute(sql, (id,))
@@ -86,6 +79,7 @@ def index_documents(conn):
 
     for row in cursor:
         yield row[0]
+
 
 if __name__=='__main__':
 

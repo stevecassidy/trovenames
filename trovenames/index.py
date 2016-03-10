@@ -8,15 +8,18 @@ import sys
 
 from swifttext import SwiftTextContainer
 try:
-    from mysqlindex import index_connect, index_create_tables, index_get, index_insert
+    from mysqlindex import index_connect, index_create_tables, index_get, index_insert, index_documents
 except:
-    pass
+    from sqliteindex import index_connect, index_create_tables, index_get, index_insert, index_documents
 
 class TroveIndex(object):
     """A Trove Index class that uses mysql to store
     the index"""
 
     def __init__(self):
+
+
+        self._db = index_connect()
 
         try:
             self._db = index_connect()
@@ -49,7 +52,7 @@ class TroveIndex(object):
 
     def _read(self, indexfile):
         """Read the index from a file"""
-        print "Reading index from ", indexfile
+
         self._cursor = self._db.cursor()
         with open(indexfile, 'rb') as infile:
             for line in infile:
@@ -61,7 +64,7 @@ class TroveIndex(object):
     def documents(self):
         """Return an iterator over the documents in the index"""
 
-        return iter(self._index)
+        return index_documents(self._db)
 
     def get_document(self, id):
         """Get a document from the datafile given
@@ -160,6 +163,8 @@ class TroveSwiftIndex(TroveIndex):
 
         super(TroveSwiftIndex, self).__init__()
 
+
+
     def get_document(self, id):
         """Get a document from the datafile given
         the document id. Return a Python dictionary
@@ -171,7 +176,7 @@ class TroveSwiftIndex(TroveIndex):
         except:
             return None
 
-        # local indexer has stored full path to the file, truncate for swift 
+        # local indexer has stored full path to the file, truncate for swift
         datafile = os.path.basename(datafile)
         line = self.swifttext.get_by_offset(datafile, offset, length)
 
@@ -198,6 +203,14 @@ class TroveSwiftIndexBuilder(TroveIndexBuilder):
         self.datafile = datafile
 
         super(TroveSwiftIndexBuilder, self).__init__(datafile, out)
+
+
+    def add_to_index(self, id, offset, length):
+        """Add this id/offset pair to the index
+        """
+
+        # for swift we use the file baseam
+        self.out.write("%s, %d, %d, %s\n" % (id, offset, length, os.path.basename(self.datafile)))
 
 
     def _build_index(self):

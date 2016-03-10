@@ -66,11 +66,10 @@ class SwiftTextContainer:
 if __name__=='__main__':
 
     sw = SwiftTextContainer()
-    #for doc in sw.documents():
-    #    print doc
+    for doc in sw.documents():
+        print doc
 
     count = 0
     for line in sw.document_lines('trove-sample.dat'):
-        if not line[1].endswith('}\n'):
-            print count, line[0], line[1][0:3], '...', line[1][-10:]
+        print count, line[0], line[1][0:3], '...', line[1][-10:],
         count += 1

@@ -14,7 +14,7 @@ def write(count, wordcount, outfile):
 
 def countwords(document):
 
-    print "COUNT", document
+    #print "COUNT", document
 
 
     docname = document['name']

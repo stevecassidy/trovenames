@@ -231,7 +231,7 @@ SELECT ?otherperson ?name (count(?name) as ?count) WHERE {
     ?article dcterms:title ?articletitle .
     ?otherperson foaf:name ?name .
   filter (<http://trove.alveo.edu.au/name/%s> != ?otherperson)
-} group by ?name
+} group by ?name ?otherperson
 order by desc(?count)
     """ % (nameid, nameid)
 
@@ -285,4 +285,4 @@ def document(docid):
 if __name__=='__main__':
 
 
-    application.run(debug=True, reloader=True)
+    application.run(port="8019", debug=True, reloader=True)
